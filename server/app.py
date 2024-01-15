@@ -17,11 +17,53 @@ db.init_app(app)
 api = Api(app)
 
 class Plants(Resource):
-    pass
+    def get(self):
+        plants = Plant.query.all()
+        return jsonify([plant.serialize() for plant in plants])
+
+    def post(self):
+        data = request.get_json()
+        new_plant = Plant(name=data['name'], image=data['image'], price=data['price'])
+        db.session.add(new_plant)
+        db.session.commit()
+        response = make_response(jsonify(new_plant.serialize()), 201)
+        response.headers['Location'] = f'/plants/{new_plant.id}'
+        return response
 
 class PlantByID(Resource):
-    pass
-        
+    def get(self, id):
+        plant = Plant.query.get(id)
+        if plant:
+            return jsonify(plant.serialize())
+        else:
+            return make_response(jsonify({'error': 'Plant not found'}), 404)
+
+    def put(self, id):
+        plant = Plant.query.get(id)
+        if not plant:
+            return make_response(jsonify({'error': 'Plant not found'}), 404)
+
+        data = request.get_json()
+        plant.name = data['name']
+        plant.image = data['image']
+        plant.price = data['price']
+
+        db.session.commit()
+
+        return jsonify(plant.serialize())
+
+    def delete(self, id):
+        plant = Plant.query.get(id)
+        if not plant:
+            return make_response(jsonify({'error': 'Plant not found'}), 404)
+
+        db.session.delete(plant)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Plant deleted successfully'}), 200)
+
+api.add_resource(Plants, '/plants')
+api.add_resource(PlantByID, '/plants/<int:id>')
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
